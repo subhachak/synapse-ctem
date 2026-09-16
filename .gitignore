@@ -1,0 +1,28 @@
+# dependencies / build output
+**/node_modules/
+**/.next/
+**/__pycache__/
+**/.pytest_cache/
+frontend/*.tsbuildinfo
+
+# virtualenvs
+**/.venv/
+**/.venv-streamlit/
+backend/venv/
+
+# secrets and local config
+**/.env
+backend/app/data/risk_model_settings.json
+
+# runtime state (SQLite stores, recreated by /api/reset)
+backend/app/data/graph.db*
+backend/app/data/ctem_runs.db*
+backend/app/data/runs.db*
+
+# live-remediation scratch clones
+backend/app/data/remediation_workspace/
+
+# run.sh pidfiles / logs
+.run/
+
+**/.DS_Store

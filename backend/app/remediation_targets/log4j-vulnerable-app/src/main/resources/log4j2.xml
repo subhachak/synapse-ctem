@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Ordinary, realistic config: a plain Console appender with a standard
+     PatternLayout. Nothing here "turns on" the vulnerability; %msg / %m
+     rendering the final message (and evaluating ${...} lookups in it on
+     vulnerable log4j-core versions) is just how log4j has always worked. -->
+<Configuration status="WARN">
+  <Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="%d{HH:mm:ss} %-5level %logger{36} - %msg%n"/>
+    </Console>
+  </Appenders>
+  <Loggers>
+    <Root level="info">
+      <AppenderRef ref="Console"/>
+    </Root>
+  </Loggers>
+</Configuration>

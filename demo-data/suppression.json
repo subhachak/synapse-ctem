@@ -1,0 +1,15 @@
+{
+  "custom": {
+    "component": "OpenSSL",
+    "name": "Internal-only low-probability cryptographic finding",
+    "cve": "CVE-DEMO-SUPPRESSION",
+    "severity": "Low",
+    "cvssBase": 3.1,
+    "epss": 0.01,
+    "cisaKev": false,
+    "runtimeReachable": false,
+    "affectedServiceIds": ["svc-5"],
+    "source": "Simulated scanner adapter",
+    "simulateSandboxFailure": false
+  }
+}

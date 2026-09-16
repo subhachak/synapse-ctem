@@ -1,0 +1,14 @@
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+langgraph==0.2.62
+langchain-core==0.3.28
+anthropic==0.42.0
+python-dotenv==1.0.1
+# Makes the ssl module defer to the OS certificate store (macOS Keychain) instead of
+# certifi's bundled CA list. Needed on machines behind a TLS-inspecting corporate proxy
+# (e.g. Netskope) whose root cert is trusted by macOS but not by certifi.
+truststore==0.9.2
+# Pinned to 2.0.11, not latest (3.x): newer releases pull langgraph-checkpoint>=4,
+# which conflicts with langgraph==0.2.62's langgraph-checkpoint<3.0.0 requirement.
+langgraph-checkpoint-sqlite==2.0.11

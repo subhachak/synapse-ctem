@@ -1,0 +1,6 @@
+# Dev/test-only dependencies (not needed to run the demo).
+# The test suite is written with the stdlib unittest runner, so it also runs via:
+#   python -m unittest discover -s tests
+# pytest is provided for convenience / CI.
+-r requirements.txt
+pytest==8.3.4

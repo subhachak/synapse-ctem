@@ -1,0 +1,27 @@
+{
+  "_comment": "Agentic DAST remediation scenario: a reflected cross-site scripting (CWE-79) vuln in node-payments-api /greeting, found by a BLACK-BOX HTTP probe against the running app (not a source signature). No version bump fixes it — the orchestrator's sub-agents (scanner/planner/implementer/tester) synthesize an output-encoding fix and re-probe the live endpoint to confirm closure, with bounded self-correcting retries. Offline demo uses a recorded deterministic fix; set CTEM_LIVE_LLM=true for the real model.",
+  "custom": {
+    "component": "node-payments-api (/greeting)",
+    "name": "Reflected XSS in node-payments-api /greeting",
+    "cve": "CWE-79",
+    "severity": "High",
+    "cvssBase": 8.2,
+    "epss": 0.5,
+    "cisaKev": false,
+    "runtimeReachable": true,
+    "affectedServiceIds": ["svc-5"],
+    "source": "DAST scan — black-box HTTP probe",
+    "remediationTarget": {
+      "ecosystem": "npm",
+      "strategy": "dast-web",
+      "remoteRepo": "",
+      "baseBranch": "main",
+      "repoSnapshot": "remediation_targets/node-payments-api",
+      "manifest": "package.json",
+      "testCommand": "npm test",
+      "filePath": "src/server.js",
+      "vulnClass": "reflected-xss",
+      "targetCve": "CWE-79"
+    }
+  }
+}

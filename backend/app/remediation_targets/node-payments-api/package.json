@@ -1,0 +1,14 @@
+{
+  "name": "node-payments-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Intentionally-vulnerable demo target for the Mphasis Synapse CTEM live-remediation loop. Do not deploy.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "lodash": "4.17.4"
+  }
+}

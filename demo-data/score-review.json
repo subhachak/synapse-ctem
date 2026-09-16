@@ -1,0 +1,14 @@
+{
+  "custom": {
+    "component": "GnuPG",
+    "name": "High-severity GnuPG finding with incomplete scoring evidence",
+    "cve": "CVE-DEMO-SCORE-REVIEW",
+    "severity": "High",
+    "epss": 0.68,
+    "cisaKev": false,
+    "runtimeReachable": true,
+    "affectedServiceIds": ["svc-1"],
+    "source": "Simulated scanner adapter",
+    "simulateSandboxFailure": false
+  }
+}

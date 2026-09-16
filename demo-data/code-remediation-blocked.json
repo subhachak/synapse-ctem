@@ -1,0 +1,28 @@
+{
+  "_comment": "Safe-failure variant: fixedVersion 4.99.99 does not exist on npm, so npm install fails, the sandbox contract tests do not pass, and the live adapter blocks deployment — demonstrating that an unsafe change is never certified closed.",
+  "custom": {
+    "component": "lodash (node-payments-api)",
+    "name": "Prototype pollution in node-payments-api (blocked remediation demo)",
+    "cve": "CVE-2019-10744",
+    "severity": "Critical",
+    "cvssBase": 9.8,
+    "epss": 0.85,
+    "cisaKev": false,
+    "runtimeReachable": true,
+    "affectedServiceIds": ["svc-5"],
+    "source": "SCA code scan (npm audit) — CI pipeline",
+    "remediationTarget": {
+      "ecosystem": "npm",
+      "remoteRepo": "",
+      "baseBranch": "main",
+      "repoSnapshot": "remediation_targets/node-payments-api",
+      "manifest": "package.json",
+      "testCommand": "npm test",
+      "vulnerablePackage": "lodash",
+      "currentVersion": "4.17.4",
+      "fixedVersion": "4.99.99",
+      "targetAdvisory": "GHSA-jf85-cpcp-j695",
+      "targetCve": "CVE-2019-10744"
+    }
+  }
+}

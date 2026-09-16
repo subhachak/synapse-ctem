@@ -1,0 +1,31 @@
+{
+  "_comment": "Live, GitHub-Actions-verified remediation scenario: Log4Shell (CVE-2021-44228) in a real Java/Maven app. No local JDK/Maven assumed on the demo host -- build, mvn test, and a real JNDI-lookup exploit probe run for real on GitHub Actions (see backend/app/remediation/actions_ci.py and remediation_targets/log4j-vulnerable-app/.github/workflows/ctem-verify.yml). The fix is a one-property pom.xml bump (log4j.version 2.14.1 -> 2.17.1), same deterministic-dependency-bump shape as the lodash scenario, just a different ecosystem and verification transport.",
+  "custom": {
+    "component": "log4j-core (policy-admin-gateway)",
+    "name": "Log4Shell — unauthenticated RCE via JNDI lookup in policy-admin-gateway",
+    "cve": "CVE-2021-44228",
+    "severity": "Critical",
+    "cvssBase": 10.0,
+    "epss": 0.97,
+    "cisaKev": true,
+    "runtimeReachable": true,
+    "affectedServiceIds": ["svc-1"],
+    "source": "SCA code scan (Maven/pom.xml) — CI pipeline",
+    "remediationTarget": {
+      "ecosystem": "maven",
+      "strategy": "maven-dependency",
+      "remoteRepo": "",
+      "baseBranch": "main",
+      "repoSnapshot": "remediation_targets/log4j-vulnerable-app",
+      "manifest": "pom.xml",
+      "testCommand": "mvn test",
+      "ciWorkflow": "ctem-verify.yml",
+      "vulnerablePackage": "org.apache.logging.log4j:log4j-core",
+      "versionProperty": "log4j.version",
+      "currentVersion": "2.14.1",
+      "fixedVersion": "2.17.1",
+      "targetAdvisory": "GHSA-jfh8-c2jp-5v3q",
+      "targetCve": "CVE-2021-44228"
+    }
+  }
+}

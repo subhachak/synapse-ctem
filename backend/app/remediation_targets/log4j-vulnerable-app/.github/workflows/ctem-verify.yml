@@ -1,0 +1,54 @@
+name: ctem-verify
+
+# Explicitly triggered by the CTEM backend (POST .../actions/workflows/ctem-verify.yml/dispatches)
+# right after it pushes a fix branch -- this repo has no local JDK/Maven
+# available to the demo host, so this workflow IS the real build/test/probe
+# machine, not a formality. The backend polls this run via the GitHub REST
+# API and parses the CTEM_*_RESULT lines below out of the job log.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build (mvn package)
+        id: build
+        run: mvn -B -q -DskipTests package
+        continue-on-error: true
+
+      - name: Report build result
+        run: echo "CTEM_BUILD_RESULT=${{ steps.build.outcome == 'success' && 'PASS' || 'FAIL' }}"
+
+      - name: Test (mvn test)
+        id: test
+        if: steps.build.outcome == 'success'
+        run: mvn -B test
+        continue-on-error: true
+
+      - name: Report test result
+        run: echo "CTEM_TEST_RESULT=${{ steps.test.outcome == 'success' && 'PASS' || 'FAIL' }}"
+
+      - name: Resolve declared log4j-core version
+        run: |
+          VERSION=$(mvn -B -q -Dexpression=log4j.version -DforceStdout help:evaluate)
+          echo "CTEM_LOG4J_VERSION=$VERSION"
+
+      # Safe, real exploit-path check -- see scripts/jndi_probe.py. Prints its
+      # own CTEM_JNDI_PROBE_RESULT=OPEN|CLOSED line.
+      - name: JNDI runtime probe (real Log4Shell exploit-path check)
+        if: steps.build.outcome == 'success'
+        run: python3 scripts/jndi_probe.py target/log4j-vulnerable-app.jar
+        continue-on-error: true

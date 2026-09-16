@@ -1,0 +1,15 @@
+{
+  "custom": {
+    "component": "GnuPG",
+    "name": "Runtime-reachable GnuPG remediation contract failure",
+    "cve": "CVE-DEMO-SAFE-FAILURE",
+    "severity": "High",
+    "cvssBase": 8.4,
+    "epss": 0.74,
+    "cisaKev": false,
+    "runtimeReachable": true,
+    "affectedServiceIds": ["svc-1"],
+    "source": "Simulated scanner adapter",
+    "simulateSandboxFailure": true
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "_comment": "Agentic remediation scenario: a first-party OS command-injection (CWE-78) in node-payments-api /diagnostics. No version bump can fix it — an AI coding agent rewrites the source (cp.exec -> cp.execFile), gated by SAST re-scan + tests + a runtime exploit probe. Offline demo uses a recorded deterministic fix; set CTEM_LIVE_LLM=true for the real model.",
+  "custom": {
+    "component": "node-payments-api (/diagnostics)",
+    "name": "OS command injection in node-payments-api /diagnostics",
+    "cve": "CWE-78",
+    "severity": "Critical",
+    "cvssBase": 9.8,
+    "epss": 0.8,
+    "cisaKev": false,
+    "runtimeReachable": true,
+    "affectedServiceIds": ["svc-5"],
+    "source": "SAST code scan — CI pipeline",
+    "remediationTarget": {
+      "ecosystem": "npm",
+      "strategy": "agentic-code",
+      "remoteRepo": "",
+      "baseBranch": "main",
+      "repoSnapshot": "remediation_targets/node-payments-api",
+      "manifest": "package.json",
+      "testCommand": "npm test",
+      "filePath": "src/server.js",
+      "vulnClass": "command-injection",
+      "targetCve": "CWE-78"
+    }
+  }
+}
