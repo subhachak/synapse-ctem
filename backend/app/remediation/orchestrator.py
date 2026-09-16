@@ -40,6 +40,11 @@ _CLASSIFICATION = {
         "path: a coding agent proposes the fix, bounded by a deterministic validation gate and "
         "self-correcting retries.",
     ),
+    "maven-spring-cf-bump": (
+        "SCA", "deterministic",
+        "Known Spring Cloud Function SpEL RCE (CVE-2022-22963) with a published fixed version. "
+        "Deterministic pom.xml property bump; build/test/exploit-probe verified on CI.",
+    ),
     "agentic-dast-fix": (
         "DAST", "agentic",
         "Runtime-observable web weakness found by a black-box probe, no canned recipe. Routed to the "

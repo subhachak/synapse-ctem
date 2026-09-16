@@ -29,13 +29,16 @@ _ENV_OVERRIDE_BY_ECOSYSTEM = {
 }
 
 
-def resolve_repo(target_repo: str, ecosystem: str = "npm") -> str:
+def resolve_repo(target_repo: str, ecosystem: str = "npm", env_var: str = "") -> str:
     """Env override wins, then the finding's configured repo. Empty => local
     fallback. The env var is per-ecosystem on purpose -- the npm
     (node-payments-api) and maven (log4j) demo targets are two different
     GitHub repos, and a single shared override would make whichever one you
-    configured last silently clobber the other's remoteRepo."""
-    env_key = _ENV_OVERRIDE_BY_ECOSYSTEM.get(ecosystem, "CTEM_REMEDIATION_REPO")
+    configured last silently clobber the other's remoteRepo. A target may name
+    its own `env_var` to override the ecosystem default, so a third target that
+    shares an ecosystem (the Spring maven target) gets its own key rather than
+    colliding with log4j's CTEM_LOG4J_REMEDIATION_REPO."""
+    env_key = env_var.strip() or _ENV_OVERRIDE_BY_ECOSYSTEM.get(ecosystem, "CTEM_REMEDIATION_REPO")
     return (os.environ.get(env_key, "").strip() or (target_repo or "").strip())
 
 

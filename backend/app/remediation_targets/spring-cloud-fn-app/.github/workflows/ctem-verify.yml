@@ -1,0 +1,53 @@
+name: ctem-verify
+
+# Triggered by the CTEM backend (POST .../actions/workflows/ctem-verify.yml/dispatches)
+# right after it pushes a fix branch. The demo host has no local JDK/Maven, so
+# this workflow IS the real build/test/exploit-probe machine. The backend polls
+# the run via the GitHub REST API and parses the CTEM_*=... marker lines below.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Build (mvn package)
+        id: build
+        run: mvn -B -q -DskipTests package
+        continue-on-error: true
+
+      - name: Report build result
+        run: echo "CTEM_BUILD_RESULT=${{ steps.build.outcome == 'success' && 'PASS' || 'FAIL' }}"
+
+      - name: Test (mvn test)
+        id: test
+        if: steps.build.outcome == 'success'
+        run: mvn -B test
+        continue-on-error: true
+
+      - name: Report test result
+        run: echo "CTEM_TEST_RESULT=${{ steps.test.outcome == 'success' && 'PASS' || 'FAIL' }}"
+
+      - name: Resolve declared spring-cloud-function version
+        run: |
+          VERSION=$(mvn -B -q -Dexpression=spring-cloud-function.version -DforceStdout help:evaluate)
+          echo "CTEM_RESOLVED_VERSION=$VERSION"
+
+      # Safe, real exploit-path check — see scripts/spel_probe.py. Prints its
+      # own CTEM_PROBE_RESULT=OPEN|CLOSED line.
+      - name: SpEL RCE runtime probe (real CVE-2022-22963 exploit-path check)
+        if: steps.build.outcome == 'success'
+        run: python3 scripts/spel_probe.py target/spring-cloud-fn-app.jar
+        continue-on-error: true

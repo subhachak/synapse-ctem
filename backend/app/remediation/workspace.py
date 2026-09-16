@@ -63,7 +63,7 @@ def prepare(run_id: str, target: RemediationTarget) -> Workspace:
     ws_path = os.path.join(_WORKSPACE_ROOT, run_id)
     shutil.rmtree(ws_path, ignore_errors=True)
 
-    repo = github_pr.resolve_repo(target.remoteRepo, target.ecosystem)
+    repo = github_pr.resolve_repo(target.remoteRepo, target.ecosystem, target.repoEnvVar)
     base = target.baseBranch or "main"
     remote_repo = ""
 

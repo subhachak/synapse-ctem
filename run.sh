@@ -29,6 +29,8 @@ TARGET_SNAPSHOT="$BACKEND_DIR/app/remediation_targets/node-payments-api"
 # github_pr.resolve_repo).
 TARGET_REPO_NAME_LOG4J="ctem-log4j-demo"
 TARGET_SNAPSHOT_LOG4J="$BACKEND_DIR/app/remediation_targets/log4j-vulnerable-app"
+TARGET_REPO_NAME_SPRING="ctem-spring-demo"
+TARGET_SNAPSHOT_SPRING="$BACKEND_DIR/app/remediation_targets/spring-cloud-fn-app"
 
 mkdir -p "$RUN_DIR"
 
@@ -164,7 +166,8 @@ inject_code() {
     dast)    payload_file="$ROOT_DIR/demo-data/code-remediation-dast.json" ;;      # DAST: AI agent fixes a reflected XSS found by a live HTTP probe
     blocked) payload_file="$ROOT_DIR/demo-data/code-remediation-blocked.json" ;;  # safe-failure (blocked)
     log4j)   payload_file="$ROOT_DIR/demo-data/code-remediation-log4j.json" ;;    # SCA (Maven): Log4Shell, GitHub-Actions-verified
-    *) echo "Usage: $0 inject-code [live|agentic|dast|blocked|log4j]"; exit 2 ;;
+    spring)  payload_file="$ROOT_DIR/demo-data/code-remediation-spring.json" ;;   # SCA (Maven/Spring): Spring Cloud Function SpEL RCE, GitHub-Actions-verified
+    *) echo "Usage: $0 inject-code [live|agentic|dast|blocked|log4j|spring]"; exit 2 ;;
   esac
 
   if ! is_running "$BACKEND_PID_FILE"; then
@@ -282,6 +285,58 @@ setup_log4j() {
     echo "  wrote CTEM_LOG4J_REMEDIATION_REPO=$repo to backend/.env"
   fi
   echo "Setup complete. Run ./run.sh restart to load it, then ./run.sh inject-code log4j."
+}
+
+# The Spring Cloud Function SpEL RCE (CVE-2022-22963) maven scenario: its own
+# repo and its own env var (CTEM_SPRING_REMEDIATION_REPO) so it never collides
+# with the log4j maven target above. Same GitHub-Actions verification transport.
+setup_spring() {
+  local tok repo login name
+  tok="$(env_val GITHUB_TOKEN)"
+  if [[ -z "$tok" ]]; then
+    echo "No GITHUB_TOKEN in $BACKEND_ENV — add a PAT with 'repo' + 'workflow' scope, then re-run ./run.sh setup-spring." >&2
+    exit 1
+  fi
+  login="$(curl -sf -H "Authorization: Bearer $tok" https://api.github.com/user \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["login"])')" \
+    || { echo "GitHub token was rejected (check it isn't expired/revoked)." >&2; exit 1; }
+  echo "Authenticated as $login."
+
+  repo="$(env_val CTEM_SPRING_REMEDIATION_REPO)"
+  [[ -z "$repo" ]] && repo="$login/$TARGET_REPO_NAME_SPRING"
+  name="${repo#*/}"
+
+  echo "Ensuring GitHub target repo $repo exists (private)..."
+  local code
+  code=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+    -H "Authorization: Bearer $tok" -H "Accept: application/vnd.github+json" \
+    https://api.github.com/user/repos \
+    -d "{\"name\":\"$name\",\"private\":true,\"description\":\"Mphasis Synapse CTEM demo target — intentionally vulnerable to Spring Cloud Function SpEL RCE (CVE-2022-22963, spring-cloud-function 3.2.2). Do not deploy.\"}")
+  case "$code" in
+    201) echo "  created $repo" ;;
+    422) echo "  $repo already exists — reusing" ;;
+    *)   echo "  repo create returned HTTP $code (continuing)" ;;
+  esac
+
+  echo "Seeding $repo@main with the vulnerable baseline (spring-cloud-function 3.2.2)..."
+  local tmp; tmp="$(mktemp -d)"
+  cp -R "$TARGET_SNAPSHOT_SPRING/." "$tmp/"
+  (
+    cd "$tmp" && rm -rf target .git
+    git init -b main -q
+    git -c user.email=ctem-agent@mphasis.demo -c user.name="CTEM Implementation Agent" add -A
+    git -c user.email=ctem-agent@mphasis.demo -c user.name="CTEM Implementation Agent" commit -qm "vulnerable baseline (spring-cloud-function 3.2.2, CVE-2022-22963)"
+    git remote add origin "https://x-access-token:${tok}@github.com/${repo}.git"
+    git push -u origin main --force -q
+  ) || { rm -rf "$tmp"; echo "  seed push failed." >&2; exit 1; }
+  rm -rf "$tmp"
+  echo "  seeded $repo@main (ctem-verify.yml is live as of this push)."
+
+  if ! grep -q '^CTEM_SPRING_REMEDIATION_REPO=' "$BACKEND_ENV" 2>/dev/null; then
+    echo "CTEM_SPRING_REMEDIATION_REPO=$repo" >> "$BACKEND_ENV"
+    echo "  wrote CTEM_SPRING_REMEDIATION_REPO=$repo to backend/.env"
+  fi
+  echo "Setup complete. Run ./run.sh restart to load it, then ./run.sh inject-code spring."
 }
 
 # Close any open ctem/fix-* PRs and delete those branches on ONE repo so
@@ -460,11 +515,12 @@ case "${1:-}" in
   status)      status ;;
   setup)       setup ;;
   setup-log4j) setup_log4j ;;
+  setup-spring) setup_spring ;;
   reset)       reset "${2:-presentation}" ;;
   inject-code) inject_code "${2:-live}" ;;
   demo-scenarios) inject_code live; inject_code agentic; inject_code dast ;;  # inject SCA + SAST + DAST back to back
   *)
-    echo "Usage: $0 {start|stop|restart|status|setup|setup-log4j|reset [presentation|technical]|inject-code [live|agentic|dast|blocked|log4j]|demo-scenarios}"
+    echo "Usage: $0 {start|stop|restart|status|setup|setup-log4j|setup-spring|reset [presentation|technical]|inject-code [live|agentic|dast|blocked|log4j|spring]|demo-scenarios}"
     exit 1
     ;;
 esac

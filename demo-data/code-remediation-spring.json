@@ -1,0 +1,32 @@
+{
+  "_comment": "Live, GitHub-Actions-verified remediation of a genuinely-Spring CVE: Spring Cloud Function SpEL RCE (CVE-2022-22963) in a real Spring Boot app. spring-cloud-function <= 3.2.2 evaluates the spring.cloud.function.routing-expression HTTP header as SpEL, so one unauthenticated POST to /functionRouter runs arbitrary code. Fix is a one-property pom.xml bump (spring-cloud-function.version 3.2.2 -> 3.2.3). No local JDK/Maven assumed: build, mvn test, and a real SpEL exploit probe run on GitHub Actions (see backend/app/remediation_targets/spring-cloud-fn-app/.github/workflows/ctem-verify.yml and scripts/spel_probe.py). Uses its own repo env var (CTEM_SPRING_REMEDIATION_REPO) so it never collides with the log4j maven target.",
+  "custom": {
+    "component": "spring-cloud-function-web (customer-portal-gateway)",
+    "name": "Spring Cloud Function SpEL RCE — unauthenticated code execution via routing-expression header",
+    "cve": "CVE-2022-22963",
+    "severity": "Critical",
+    "cvssBase": 9.8,
+    "epss": 0.94,
+    "cisaKev": true,
+    "runtimeReachable": true,
+    "affectedServiceIds": ["svc-1"],
+    "source": "SCA code scan (Maven/pom.xml) — CI pipeline",
+    "remediationTarget": {
+      "ecosystem": "maven",
+      "strategy": "maven-spring-cf",
+      "remoteRepo": "",
+      "repoEnvVar": "CTEM_SPRING_REMEDIATION_REPO",
+      "baseBranch": "main",
+      "repoSnapshot": "remediation_targets/spring-cloud-fn-app",
+      "manifest": "pom.xml",
+      "testCommand": "mvn test",
+      "ciWorkflow": "ctem-verify.yml",
+      "vulnerablePackage": "org.springframework.cloud:spring-cloud-function-context",
+      "versionProperty": "spring-cloud-function.version",
+      "currentVersion": "3.2.2",
+      "fixedVersion": "3.2.3",
+      "targetAdvisory": "GHSA-6v73-fgf6-w5j7",
+      "targetCve": "CVE-2022-22963"
+    }
+  }
+}

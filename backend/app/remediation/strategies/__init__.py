@@ -5,6 +5,7 @@ from app.remediation.strategies.base import MutationResult, RemediationStrategy
 from app.remediation.strategies.dast_web import DastWebStrategy
 from app.remediation.strategies.dependency import DeterministicDependencyStrategy
 from app.remediation.strategies.maven_ci_dependency import MavenCiDependencyStrategy
+from app.remediation.strategies.spring_cf_ci import SpringCloudFunctionCiStrategy
 
 # Order matters only for the fallthrough default (dependency).
 _STRATEGIES: list[RemediationStrategy] = [
@@ -12,6 +13,7 @@ _STRATEGIES: list[RemediationStrategy] = [
     AgenticCodeStrategy(),
     DastWebStrategy(),
     MavenCiDependencyStrategy(),
+    SpringCloudFunctionCiStrategy(),
 ]
 
 
@@ -25,4 +27,4 @@ def select_strategy(finding: RawFinding) -> RemediationStrategy:
 
 __all__ = ["RemediationStrategy", "MutationResult", "select_strategy",
            "DeterministicDependencyStrategy", "AgenticCodeStrategy", "DastWebStrategy",
-           "MavenCiDependencyStrategy"]
+           "MavenCiDependencyStrategy", "SpringCloudFunctionCiStrategy"]

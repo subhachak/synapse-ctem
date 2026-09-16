@@ -344,13 +344,13 @@ def run_live_remediation_ci(finding: RawFinding, run_id: str) -> LiveRemediation
     ci = actions_ci.run_and_wait(workspace.remote_repo, target.ciWorkflow, branch)
     build_ok = ci.markers.get("BUILD_RESULT") == "PASS"
     test_ok = ci.markers.get("TEST_RESULT") == "PASS"
-    probe_closed = ci.markers.get("JNDI_PROBE_RESULT") == "CLOSED"
+    probe_closed = ci.markers.get("PROBE_RESULT", ci.markers.get("JNDI_PROBE_RESULT")) == "CLOSED"
     sandbox_passed = ci.ok and build_ok and test_ok
 
     if ci.ok:
         sandbox_detail = (
             f"GitHub Actions run {ci.run_id} ({ci.conclusion}): build={ci.markers.get('BUILD_RESULT','?')}, "
-            f"test={ci.markers.get('TEST_RESULT','?')}, log4j-core version={ci.markers.get('LOG4J_VERSION','?')}. "
+            f"test={ci.markers.get('TEST_RESULT','?')}, resolved version={ci.markers.get('RESOLVED_VERSION', ci.markers.get('LOG4J_VERSION','?'))}. "
             f"{mutation.detail} [{mutation.method}]"
         )
     else:

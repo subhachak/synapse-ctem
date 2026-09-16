@@ -326,7 +326,7 @@ def get_incident_links(run_id: str):
     finding = RawFinding.model_validate_json(run["finding_json"])
     repo = ""
     if finding.remediationTarget is not None:
-        repo = github_pr.resolve_repo(finding.remediationTarget.remoteRepo, finding.remediationTarget.ecosystem)
+        repo = github_pr.resolve_repo(finding.remediationTarget.remoteRepo, finding.remediationTarget.ecosystem, finding.remediationTarget.repoEnvVar)
     pr_url = ""
     result = get_incident_result(run_id)
     if result:

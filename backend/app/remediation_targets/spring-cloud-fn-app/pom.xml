@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!--
+    Intentionally-vulnerable Spring Boot target for the Mphasis Synapse CTEM
+    live-remediation loop. Do not deploy.
+
+    Carries CVE-2022-22963 (Spring Cloud Function SpEL RCE): spring-cloud-function
+    <= 3.2.2 evaluates the `spring.cloud.function.routing-expression` HTTP header
+    as SpEL, so an unauthenticated POST to /functionRouter runs arbitrary code.
+    The fix is a one-property bump to 3.2.3 (see the <spring-cloud-function.version>
+    property below), verified on GitHub Actions by scripts/spel_probe.py.
+  -->
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>2.6.3</version>
+    <relativePath/>
+  </parent>
+
+  <groupId>com.mphasis.synapse</groupId>
+  <artifactId>spring-cloud-fn-app</artifactId>
+  <version>1.0.0</version>
+
+  <properties>
+    <java.version>17</java.version>
+    <!-- CTEM bumps THIS property for the fix: 3.2.2 (vulnerable) -> 3.2.3 (fixed). -->
+    <spring-cloud-function.version>3.2.2</spring-cloud-function.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <!-- Pinned explicitly (not via the Spring Cloud BOM) so the single tracked
+         property fully controls the vulnerable version. function-web pulls
+         function-context transitively at the same version. -->
+    <dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-function-web</artifactId>
+      <version>${spring-cloud-function.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-function-context</artifactId>
+      <version>${spring-cloud-function.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>spring-cloud-fn-app</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+</project>

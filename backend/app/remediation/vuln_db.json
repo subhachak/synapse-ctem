@@ -1,45 +1,90 @@
 {
-  "_comment": "Offline, deterministic vulnerability database (OSV-shaped) used as a fallback when a live scanner (npm audit) is unavailable. Real advisory ids and real fixed versions; matched against the installed package version read from the workspace. This is a real match against real version ranges — not a mock result.",
-  "advisories": [
+ "_comment": "Offline, deterministic vulnerability database (OSV-shaped) used as a fallback when a live scanner (npm audit) is unavailable. Real advisory ids and real fixed versions; matched against the installed package version read from the workspace. This is a real match against real version ranges \u2014 not a mock result.",
+ "advisories": [
+  {
+   "id": "GHSA-jf85-cpcp-j695",
+   "aliases": [
+    "CVE-2019-10744"
+   ],
+   "package": "lodash",
+   "ecosystem": "npm",
+   "severity": "critical",
+   "title": "Prototype Pollution in lodash (_.defaultsDeep / _.merge follow __proto__)",
+   "url": "https://github.com/advisories/GHSA-jf85-cpcp-j695",
+   "vulnerable": [
     {
-      "id": "GHSA-jf85-cpcp-j695",
-      "aliases": ["CVE-2019-10744"],
-      "package": "lodash",
-      "ecosystem": "npm",
-      "severity": "critical",
-      "title": "Prototype Pollution in lodash (_.defaultsDeep / _.merge follow __proto__)",
-      "url": "https://github.com/advisories/GHSA-jf85-cpcp-j695",
-      "vulnerable": [{ "op": "<", "version": "4.17.12" }]
-    },
-    {
-      "id": "GHSA-p6mc-m468-83gw",
-      "aliases": ["CVE-2020-8203"],
-      "package": "lodash",
-      "ecosystem": "npm",
-      "severity": "high",
-      "title": "Prototype Pollution in lodash (_.zipObjectDeep / _.set)",
-      "url": "https://github.com/advisories/GHSA-p6mc-m468-83gw",
-      "vulnerable": [{ "op": "<", "version": "4.17.19" }]
-    },
-    {
-      "id": "GHSA-35jh-r3h4-6jhm",
-      "aliases": ["CVE-2021-23337"],
-      "package": "lodash",
-      "ecosystem": "npm",
-      "severity": "high",
-      "title": "Command Injection in lodash (_.template)",
-      "url": "https://github.com/advisories/GHSA-35jh-r3h4-6jhm",
-      "vulnerable": [{ "op": "<", "version": "4.17.21" }]
-    },
-    {
-      "id": "GHSA-jfh8-c2jp-5v3q",
-      "aliases": ["CVE-2021-44228"],
-      "package": "org.apache.logging.log4j:log4j-core",
-      "ecosystem": "maven",
-      "severity": "critical",
-      "title": "Log4Shell — RCE via unauthenticated JNDI lookup (Log4j2)",
-      "url": "https://github.com/advisories/GHSA-jfh8-c2jp-5v3q",
-      "vulnerable": [{ "op": "<", "version": "2.17.1" }]
+     "op": "<",
+     "version": "4.17.12"
     }
-  ]
+   ]
+  },
+  {
+   "id": "GHSA-p6mc-m468-83gw",
+   "aliases": [
+    "CVE-2020-8203"
+   ],
+   "package": "lodash",
+   "ecosystem": "npm",
+   "severity": "high",
+   "title": "Prototype Pollution in lodash (_.zipObjectDeep / _.set)",
+   "url": "https://github.com/advisories/GHSA-p6mc-m468-83gw",
+   "vulnerable": [
+    {
+     "op": "<",
+     "version": "4.17.19"
+    }
+   ]
+  },
+  {
+   "id": "GHSA-35jh-r3h4-6jhm",
+   "aliases": [
+    "CVE-2021-23337"
+   ],
+   "package": "lodash",
+   "ecosystem": "npm",
+   "severity": "high",
+   "title": "Command Injection in lodash (_.template)",
+   "url": "https://github.com/advisories/GHSA-35jh-r3h4-6jhm",
+   "vulnerable": [
+    {
+     "op": "<",
+     "version": "4.17.21"
+    }
+   ]
+  },
+  {
+   "id": "GHSA-jfh8-c2jp-5v3q",
+   "aliases": [
+    "CVE-2021-44228"
+   ],
+   "package": "org.apache.logging.log4j:log4j-core",
+   "ecosystem": "maven",
+   "severity": "critical",
+   "title": "Log4Shell \u2014 RCE via unauthenticated JNDI lookup (Log4j2)",
+   "url": "https://github.com/advisories/GHSA-jfh8-c2jp-5v3q",
+   "vulnerable": [
+    {
+     "op": "<",
+     "version": "2.17.1"
+    }
+   ]
+  },
+  {
+   "id": "GHSA-6v73-fgf6-w5j7",
+   "aliases": [
+    "CVE-2022-22963"
+   ],
+   "package": "org.springframework.cloud:spring-cloud-function-context",
+   "ecosystem": "maven",
+   "severity": "critical",
+   "title": "Remote Code Execution in Spring Cloud Function via SpEL routing-expression header",
+   "url": "https://github.com/advisories/GHSA-6v73-fgf6-w5j7",
+   "vulnerable": [
+    {
+     "op": "<",
+     "version": "3.2.3"
+    }
+   ]
+  }
+ ]
 }

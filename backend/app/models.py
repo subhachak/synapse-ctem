@@ -60,13 +60,18 @@ class RemediationTarget(BaseModel):
     # Which remediation strategy handles this finding (a classifier hint the
     # scanner sets in production; declared in the demo payload). See
     # app/remediation/strategies/.
-    strategy: Literal["dependency", "agentic-code", "dast-web", "maven-dependency"] = "dependency"
+    strategy: Literal["dependency", "agentic-code", "dast-web", "maven-dependency", "maven-spring-cf"] = "dependency"
     # GitHub "owner/repo" (or a full clone URL) the pipeline clones to work on.
     # May be overridden at runtime by CTEM_REMEDIATION_REPO (npm ecosystem) or
     # CTEM_LOG4J_REMEDIATION_REPO (maven ecosystem) — see github_pr.resolve_repo,
     # deliberately two separate env vars so the two demo targets can't clobber
     # each other.
     remoteRepo: str = ""
+    # Optional per-target env var that overrides remoteRepo, taking precedence
+    # over the ecosystem-keyed default. Lets two targets share an ecosystem
+    # (log4j and spring are both "maven") without their repo overrides
+    # clobbering each other. Empty => use the ecosystem default env key.
+    repoEnvVar: str = ""
     baseBranch: str = "main"
     # Local fallback snapshot, relative to backend/app (e.g.
     # "remediation_targets/node-payments-api"). Used ONLY when no remote repo is
