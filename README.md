@@ -11,34 +11,45 @@ It is **client-agnostic by design**, built for GTM demos across verticals: every
 This isn't a single straight-line pipeline wrapped in LangGraph for show. Findings pass through deterministic data-quality and scoring controls, a bounded AI plausibility assessment, and genuine checkpointed human gates. Every node appends to `route_path`, providing the audit trail the Governance Agent needs:
 
 ```
-context_graph -> category_match
-                      |
-confident match? -- NO --> ontology_review_gate (pause) --+
-                      |                                     |
-                      YES                                   | (approve: re-match / reject: proceed)
-                      v                                      v
-                 data_quality -> reasoning_engine <-----------+
-                      |
-              plausibility_judge
-                      |
-        flagged? -- YES --> score_review_gate (pause) --+
-                      |                                   |
-                      NO <--------------------------------+
-                      v
-                 triage_agent
-                      |
-  suppressed? -- YES --> skip_remediation --+
-                      |                       |
-                      NO                      |
-                      v                        v
-                planning_agent -> implementation_agent -> governance_agent
-                                                                 |
-                                        auto-approved? -- YES --> auto_close
-                                        else -----------------> governance_review_gate (pause)
-                                                                        |
-                                                   approve? -- YES --> auto_close
-                                                   else ------------> blocked_review
+context_graph -> parallel_enrichment -> enrichment_join
+                  |        |        |            |
+            evidence   ontology  approved        |
+            quality     match    knowledge   confident match?
+                                                 |        |
+                                                NO       YES
+                                                 v        |
+                        ontology_review_gate (pause)      |
+                                 |                        |
+          (approve: re-match / reject: proceed)           |
+                                 v                        v
+                            reasoning_engine <------------+
+                                 |
+                          plausibility_judge
+                                 |
+              flagged? -- YES --> score_review_gate (pause)
+                                 |          |
+                                 NO         | (confirm / reclassify tier)
+                                 v          v
+                            triage_agent <--+
+                                 |
+        suppressed? -- YES --> skip_remediation -> governance_agent -> auto_close
+                                 |
+                                 NO
+                                 v
+                   planning_agent -> implementation_agent -> governance_agent
+                                                                    |
+                                       auto-approved? -- YES --> execute_remediation
+                                       else -----------------> governance_review_gate (pause)
+                                                                           |
+                                                  approve? -- YES --> execute_remediation
+                                                  else ------------> blocked_review
+
+          execute_remediation -> independent_verification -> finalize_closure
 ```
+
+Only the three enrichment branches run concurrently, and only because they are read-only; an
+explicit join blocks scoring until all three have landed. Every authoritative decision stays
+sequential.
 
 - **Category match (`ontology_review_gate`):** a finding that doesn't confidently match a known vulnerability category pauses for a human reviewer to approve or reject a new category before scoring continues — the ontology curation loop.
 - **Score plausibility (`score_review_gate`):** a bounded advisory assessment can flag contradictory or inferred evidence, but cannot change the deterministic score. A human may confirm or explicitly reclassify the action tier, with the override persisted in the decision record.
@@ -85,7 +96,7 @@ cd backend
 python3 -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env              # optionally add your ANTHROPIC_API_KEY
+cp .env.example .env              # all optional; empty = fully offline and deterministic
 python -m uvicorn app.main:app --reload --port 8000
 
 # Frontend (separate terminal)
@@ -99,7 +110,7 @@ Open http://localhost:3000 — you'll see:
 - A KPI strip and two charts, computed over every finding that's reached the Governance Agent
 - A unified **Findings** queue — the 7 seed findings alongside cases injected through `democtl.sh`, with no structural difference between them
 - Click "Review ->" on any finding — while it's still running or paused, you'll see its live telemetry timeline and the relevant ontology, score, or governance review panel; once it reaches Governance, the same page adds a risk summary, the route it took, and a link into the persisted remediation workflow
-- **Settings** has a visual of the underlying ontology graph (Services/Software/Owners/Categories and their real relationships) alongside the risk-model wireframe form
+- **Settings** has a visual of the underlying ontology graph (Services/Software/Owners/Categories and their real relationships), the risk-model form (draft vs. activate — activating changes scoring for subsequent runs, never retroactively), a shadow backtest that replays a candidate model over immutable decision snapshots, and the learning summary
 - **Demo Mode** (`/demo`) is a scripted, presenter-controlled walkthrough of one finding at a time, for a live client demo — nothing runs until you click through it
 
 FastAPI's interactive docs are also available at http://localhost:8000/docs once the backend is running.

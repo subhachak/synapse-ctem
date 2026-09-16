@@ -1,5 +1,39 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
+// Every response is unwrapped through here so a non-2xx can never be mistaken
+// for a success payload. FastAPI returns errors as JSON ({"detail": ...}), so
+// calling r.json() without checking the status yields a well-formed object of
+// entirely the wrong shape — the failure then surfaces far from its cause, or
+// not at all. Throwing here keeps it at the call site.
+async function unwrap<T>(r: Response, what: string): Promise<T> {
+  if (!r.ok) {
+    let detail = "";
+    try {
+      const body = await r.json();
+      if (typeof body?.detail === "string") detail = `: ${body.detail}`;
+    } catch {
+      // error body wasn't JSON; the status code is all we have
+    }
+    throw new Error(`${what} failed (${r.status})${detail}`);
+  }
+  return r.json() as Promise<T>;
+}
+
+async function getJson<T>(path: string, what: string): Promise<T> {
+  return unwrap<T>(await fetch(`${API_BASE}${path}`), what);
+}
+
+async function postJson<T>(path: string, what: string, body: unknown = {}): Promise<T> {
+  return unwrap<T>(
+    await fetch(`${API_BASE}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+    what,
+  );
+}
+
 export interface FindingPipelineResult {
   runId: string;
   finding: {
@@ -276,13 +310,11 @@ export interface SuppressionLease {
 }
 
 export async function fetchHealth(): Promise<{ status: string; llmMode: string; retrievalMode: string }> {
-  const r = await fetch(`${API_BASE}/api/health`);
-  return r.json();
+  return getJson<{ status: string; llmMode: string; retrievalMode: string }>("/api/health", "health check");
 }
 
 export async function fetchLearningSummary(): Promise<LearningSummary> {
-  const r = await fetch(`${API_BASE}/api/learning/summary`);
-  return r.json();
+  return getJson<LearningSummary>("/api/learning/summary", "learning summary");
 }
 
 export async function backtestRiskModel(settings: RiskModelSettings): Promise<BacktestResult> {
@@ -294,8 +326,7 @@ export async function backtestRiskModel(settings: RiskModelSettings): Promise<Ba
 }
 
 export async function fetchSuppressions(): Promise<SuppressionLease[]> {
-  const r = await fetch(`${API_BASE}/api/suppressions`);
-  return r.json();
+  return getJson<SuppressionLease[]>("/api/suppressions", "suppression list");
 }
 
 export async function reopenSuppression(runId: string, trigger: string): Promise<{ successorRunId: string }> {
@@ -307,8 +338,7 @@ export async function reopenSuppression(runId: string, trigger: string): Promise
 }
 
 export async function fetchFindings(): Promise<FindingSummary[]> {
-  const r = await fetch(`${API_BASE}/api/findings`);
-  return r.json();
+  return getJson<FindingSummary[]>("/api/findings", "seed finding catalog");
 }
 
 // Looks up the bootstrapped seed run for a finding id (e.g. "find-2") and
@@ -321,32 +351,23 @@ export async function fetchSeedFindingResult(findingId: string): Promise<Finding
 }
 
 export async function fetchKpis(): Promise<KpiSummary> {
-  const r = await fetch(`${API_BASE}/api/kpis`);
-  return r.json();
+  return getJson<KpiSummary>("/api/kpis", "KPI summary");
 }
 
 export async function fetchServices(): Promise<ServiceSummary[]> {
-  const r = await fetch(`${API_BASE}/api/services`);
-  return r.json();
+  return getJson<ServiceSummary[]>("/api/services", "service list");
 }
 
 export async function fetchOwners(): Promise<OwnerSummary[]> {
-  const r = await fetch(`${API_BASE}/api/owners`);
-  return r.json();
+  return getJson<OwnerSummary[]>("/api/owners", "owner list");
 }
 
 export async function fetchRiskModelSettings(): Promise<RiskModelSettings> {
-  const r = await fetch(`${API_BASE}/api/settings/risk-model`);
-  return r.json();
+  return getJson<RiskModelSettings>("/api/settings/risk-model", "risk model settings");
 }
 
 export async function saveRiskModelSettings(settings: RiskModelSettings): Promise<RiskModelSettings> {
-  const r = await fetch(`${API_BASE}/api/settings/risk-model`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(settings),
-  });
-  return r.json();
+  return postJson<RiskModelSettings>("/api/settings/risk-model", "saving risk model settings", settings);
 }
 
 // ---------------------------------------------------------------------------
@@ -439,19 +460,9 @@ export interface RemediationDetail {
   transitions: RemediationTransition[];
 }
 
-export interface CustomIncidentPayload {
-  component: string;
-  name?: string;
-  cve?: string;
-  severity: "Critical" | "High" | "Medium" | "Low";
-  cvssBase?: number;
-  epss: number;
-  cisaKev: boolean;
-  runtimeReachable: boolean;
-  affectedServiceIds: string[];
-  source: string;
-  simulateSandboxFailure?: boolean;
-}
+// The custom-incident request shape lives with the injector that uses it:
+// backend IncidentCreateRequest (app/main.py) and democtl.sh's inject-custom.
+// Incident creation is command-line only — see /api/_control/incidents.
 
 // Realistic-sounding display name for a run's incident_source. Seed/preset
 // runs are stored as "seed:find-N" internally (needed for bootstrap
@@ -477,23 +488,12 @@ export interface QueueDecisionBody {
   selected_tier?: "Tier 0" | "Tier 1" | "Tier 2" | "Tier 3";
 }
 
-export async function createIncident(payload: { preset?: string; custom?: CustomIncidentPayload }): Promise<{ run_id: string }> {
-  const r = await fetch(`${API_BASE}/api/incidents`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  return r.json();
-}
-
 export async function fetchIncidents(): Promise<Run[]> {
-  const r = await fetch(`${API_BASE}/api/incidents`);
-  return r.json();
+  return getJson<Run[]>("/api/incidents", "incident list");
 }
 
 export async function fetchIncidentDetail(runId: string): Promise<IncidentDetail> {
-  const r = await fetch(`${API_BASE}/api/incidents/${runId}`);
-  return r.json();
+  return getJson<IncidentDetail>(`/api/incidents/${runId}`, `incident ${runId}`);
 }
 
 export function incidentStreamUrl(runId: string): string {
@@ -510,13 +510,11 @@ export async function fetchIncidentResult(runId: string): Promise<FindingPipelin
 // reached the Governance Agent) — the shared dataset behind Dashboard's
 // KPIs/charts and the History page.
 export async function fetchIncidentResults(): Promise<FindingPipelineResult[]> {
-  const r = await fetch(`${API_BASE}/api/incidents/results`);
-  return r.json();
+  return getJson<FindingPipelineResult[]>("/api/incidents/results", "bulk incident results");
 }
 
 export async function fetchOntologyQueue(): Promise<OntologyQueueItem[]> {
-  const r = await fetch(`${API_BASE}/api/queues/ontology`);
-  return r.json();
+  return getJson<OntologyQueueItem[]>("/api/queues/ontology", "ontology queue");
 }
 
 export async function resolveOntologyItem(
@@ -524,22 +522,15 @@ export async function resolveOntologyItem(
   action: "approve" | "reject",
   body: QueueDecisionBody = {}
 ): Promise<unknown> {
-  const r = await fetch(`${API_BASE}/api/queues/ontology/${itemId}/${action}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return postJson<unknown>(`/api/queues/ontology/${itemId}/${action}`, `ontology ${action}`, body);
 }
 
 export async function fetchGovernanceQueue(): Promise<GovernanceQueueItem[]> {
-  const r = await fetch(`${API_BASE}/api/queues/governance`);
-  return r.json();
+  return getJson<GovernanceQueueItem[]>("/api/queues/governance", "governance queue");
 }
 
 export async function fetchScoreReviewQueue(): Promise<ScoreReviewQueueItem[]> {
-  const r = await fetch(`${API_BASE}/api/queues/score-review`);
-  return r.json();
+  return getJson<ScoreReviewQueueItem[]>("/api/queues/score-review", "score review queue");
 }
 
 export async function resolveScoreReviewItem(
@@ -547,12 +538,7 @@ export async function resolveScoreReviewItem(
   action: "confirm" | "reclassify",
   body: QueueDecisionBody = {}
 ): Promise<unknown> {
-  const r = await fetch(`${API_BASE}/api/queues/score-review/${itemId}/${action}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return postJson<unknown>(`/api/queues/score-review/${itemId}/${action}`, `score review ${action}`, body);
 }
 
 export async function resolveGovernanceItem(
@@ -560,17 +546,7 @@ export async function resolveGovernanceItem(
   action: "approve" | "reject",
   body: QueueDecisionBody = {}
 ): Promise<unknown> {
-  const r = await fetch(`${API_BASE}/api/queues/governance/${itemId}/${action}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
-}
-
-export async function resetDemo(): Promise<{ status: string; mode: "presentation" | "technical"; stagedRunId: string | null }> {
-  const r = await fetch(`${API_BASE}/api/reset`, { method: "POST" });
-  return r.json();
+  return postJson<unknown>(`/api/queues/governance/${itemId}/${action}`, `governance ${action}`, body);
 }
 
 export async function fetchRemediation(runId: string): Promise<RemediationDetail> {
@@ -632,18 +608,11 @@ export async function fetchIncidentLinks(runId: string): Promise<IncidentLinks> 
 }
 
 export async function assignRemediationOwner(runId: string, ownerId: string): Promise<RemediationCase> {
-  const r = await fetch(`${API_BASE}/api/remediations/${runId}/assign`, {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ owner_id: ownerId }),
-  });
-  return r.json();
+  return postJson<RemediationCase>(`/api/remediations/${runId}/assign`, "owner assignment", { owner_id: ownerId });
 }
 
 export async function retryRemediation(runId: string): Promise<RemediationCase> {
-  const r = await fetch(`${API_BASE}/api/remediations/${runId}/retry`, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}),
-  });
-  return r.json();
+  return postJson<RemediationCase>(`/api/remediations/${runId}/retry`, "remediation retry");
 }
 
 // ---------------------------------------------------------------------------
@@ -671,6 +640,5 @@ export interface OntologyGraph {
 }
 
 export async function fetchOntologyGraph(): Promise<OntologyGraph> {
-  const r = await fetch(`${API_BASE}/api/ontology/graph`);
-  return r.json();
+  return getJson<OntologyGraph>("/api/ontology/graph", "ontology graph");
 }

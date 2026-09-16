@@ -37,17 +37,20 @@ export default function History() {
   const [results, setResults] = useState<FindingPipelineResult[]>([]);
   const [kpis, setKpis] = useState<KpiSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [tierFilter, setTierFilter] = useState("all");
   const [ownerFilter, setOwnerFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
 
   useEffect(() => {
-    Promise.all([fetchIncidentResults(), fetchKpis()]).then(([r, k]) => {
-      setResults(r);
-      setKpis(k);
-      setLoading(false);
-    });
+    Promise.all([fetchIncidentResults(), fetchKpis()])
+      .then(([r, k]) => {
+        setResults(r);
+        setKpis(k);
+      })
+      .catch((err) => setLoadError(err instanceof Error ? err.message : "Could not load history"))
+      .finally(() => setLoading(false));
   }, []);
 
   const withDates = useMemo(
@@ -144,6 +147,13 @@ export default function History() {
                 <tr>
                   <td colSpan={6} style={{ color: "var(--muted)" }}>
                     Loading...
+                  </td>
+                </tr>
+              )}
+              {loadError && (
+                <tr>
+                  <td colSpan={6} className="demo-error">
+                    {loadError}
                   </td>
                 </tr>
               )}

@@ -1374,16 +1374,6 @@ table.findings tr.clickable:hover {
   border-color: var(--tier-1);
 }
 
-.inject-panel {
-  margin-top: 14px;
-}
-
-.inject-toggle-row {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 4px;
-}
-
 .timeline {
   display: flex;
   flex-direction: column;
@@ -1654,8 +1644,6 @@ table.findings tr:hover td { background: #f8fbfe; }
 .dashboard-page > .chart-row { order: 3; }
 .dashboard-page > #findings { order: 4; }
 .dashboard-page > .section:not(#findings) { order: 5; }
-.dashboard-page > .inject-panel { order: 6; }
-
 /* Alert Triage uses the mockup's broad analysis column and bounded action/audit rail. */
 .review-page {
   display: grid;

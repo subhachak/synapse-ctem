@@ -6,13 +6,14 @@ import { fetchGovernanceQueue, resolveGovernanceItem, GovernanceQueueItem } from
 export default function GovernanceQueue() {
   const [items, setItems] = useState<GovernanceQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   function load() {
-    fetchGovernanceQueue().then((r) => {
-      setItems(r);
-      setLoading(false);
-    });
+    fetchGovernanceQueue()
+      .then(setItems)
+      .catch((err) => setLoadError(err instanceof Error ? err.message : "Could not load the governance queue"))
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
@@ -21,9 +22,17 @@ export default function GovernanceQueue() {
 
   async function decide(itemId: string, action: "approve" | "reject") {
     setBusyId(itemId);
-    await resolveGovernanceItem(itemId, action, { resolved_by: "demo-reviewer" });
-    setBusyId(null);
-    load();
+    setLoadError(null);
+    try {
+      await resolveGovernanceItem(itemId, action, { resolved_by: "demo-reviewer" });
+    } catch (err) {
+      // Surface it: a silently-dropped decision looks identical to an applied
+      // one once the list reloads, which is the worst possible failure here.
+      setLoadError(err instanceof Error ? err.message : `Could not ${action} this item`);
+    } finally {
+      setBusyId(null);
+      load();
+    }
   }
 
   return (
@@ -36,6 +45,7 @@ export default function GovernanceQueue() {
       </div>
 
       <div className="section">
+        {loadError && <div className="demo-error">{loadError}</div>}
         {loading && <div className="sub">Loading...</div>}
         {!loading && items.length === 0 && <div className="sub">No pending governance items.</div>}
         {items.length > 0 && (

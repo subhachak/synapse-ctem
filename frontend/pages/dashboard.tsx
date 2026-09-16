@@ -1,34 +1,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import AppShell from "../components/AppShell";
 import BarChart from "../components/charts/BarChart";
 import DonutChart from "../components/charts/DonutChart";
 import {
-  createIncident,
-  fetchFindings,
   fetchIncidents,
   fetchIncidentResults,
   fetchKpis,
-  fetchServices,
-  resetDemo,
   sourceLabel,
-  CustomIncidentPayload,
   FindingPipelineResult,
-  FindingSummary,
   KpiSummary,
   Run,
-  ServiceSummary,
 } from "../lib/api";
-
-const CUSTOM_SOURCE_OPTIONS = [
-  "Manual Entry — SOC Analyst",
-  "Qualys VMDR",
-  "Tenable.io",
-  "Snyk",
-  "GitHub Dependabot",
-  "CrowdStrike Falcon Spotlight",
-];
 
 const TIER_COLORS: Record<string, string> = {
   "Tier 0": "var(--tier-0)",
@@ -102,61 +85,39 @@ function dashboardAction(run: Run, result?: FindingPipelineResult): { label: str
   return { label: "View result", href: reviewHref };
 }
 
-const DEFAULT_CUSTOM: CustomIncidentPayload = {
-  component: "",
-  severity: "Medium",
-  epss: 0.3,
-  cisaKev: false,
-  runtimeReachable: false,
-  affectedServiceIds: [],
-  source: CUSTOM_SOURCE_OPTIONS[0],
-  simulateSandboxFailure: false,
-};
-
 export default function Dashboard() {
-  const router = useRouter();
   const [kpis, setKpis] = useState<KpiSummary | null>(null);
   const [results, setResults] = useState<FindingPipelineResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [findingsList, setFindingsList] = useState<FindingSummary[]>([]);
-  const [servicesList, setServicesList] = useState<ServiceSummary[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
-  const [injectOpen, setInjectOpen] = useState(false);
-  const [mode, setMode] = useState<"preset" | "custom">("preset");
-  const [selectedPreset, setSelectedPreset] = useState("");
-  const [custom, setCustom] = useState<CustomIncidentPayload>(DEFAULT_CUSTOM);
-  const [injecting, setInjecting] = useState(false);
-  const [resetting, setResetting] = useState(false);
-  const [injectError, setInjectError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([fetchKpis(), fetchIncidentResults()]).then(([k, r]) => {
-      setKpis(k);
-      setResults(r.sort((a, b) => b.layer2.riskPriority - a.layer2.riskPriority));
-      setLoading(false);
-    });
+    Promise.all([fetchKpis(), fetchIncidentResults()])
+      .then(([k, r]) => {
+        setKpis(k);
+        setResults(r.sort((a, b) => b.layer2.riskPriority - a.layer2.riskPriority));
+      })
+      .catch((err) => setLoadError(err instanceof Error ? err.message : "Could not load dashboard data"))
+      .finally(() => setLoading(false));
   }, []);
 
-  // Command-line/API injections enter the same run store as UI-created
-  // incidents. Refresh the derived dashboard data whenever the polled run
-  // set changes so externally injected cases update KPIs and charts too.
+  // Incidents are injected from the command line (./run.sh, democtl.sh) via the
+  // /api/_control/* endpoints; the dashboard is read-only. Refresh the derived
+  // data whenever the polled run set changes so injected cases reach KPIs too.
   const runCompletionSignature = runs.map((run) => `${run.run_id}:${run.status}`).join("|");
   useEffect(() => {
     if (!runCompletionSignature) return;
-    Promise.all([fetchKpis(), fetchIncidentResults()]).then(([k, r]) => {
-      setKpis(k);
-      setResults(r.sort((a, b) => b.layer2.riskPriority - a.layer2.riskPriority));
-    });
+    Promise.all([fetchKpis(), fetchIncidentResults()])
+      .then(([k, r]) => {
+        setKpis(k);
+        setResults(r.sort((a, b) => b.layer2.riskPriority - a.layer2.riskPriority));
+      })
+      // A refresh failure leaves the last good snapshot on screen rather than
+      // blanking the dashboard; the initial load is what surfaces the error.
+      .catch(() => {});
   }, [runCompletionSignature]);
-
-  useEffect(() => {
-    fetchFindings().then((list) => {
-      setFindingsList(list);
-      if (list.length) setSelectedPreset(list[0].id);
-    });
-    fetchServices().then(setServicesList);
-  }, []);
 
   // Live incidents: poll every 2s while any run is non-terminal, back off when idle.
   useEffect(() => {
@@ -175,42 +136,6 @@ export default function Dashboard() {
       clearTimeout(timer);
     };
   }, []);
-
-  function toggleService(id: string) {
-    setCustom((c) => ({
-      ...c,
-      affectedServiceIds: c.affectedServiceIds.includes(id)
-        ? c.affectedServiceIds.filter((x) => x !== id)
-        : [...c.affectedServiceIds, id],
-    }));
-  }
-
-  async function handleInject() {
-    setInjecting(true);
-    setInjectError(null);
-    try {
-      const payload = mode === "preset" ? { preset: selectedPreset } : { custom };
-      const { run_id } = await createIncident(payload);
-      router.push(`/review/${run_id}`);
-    } catch {
-      setInjectError("Could not start the incident — is the backend running?");
-      setInjecting(false);
-    }
-  }
-
-  async function handleReset() {
-    if (!window.confirm("Reset the demo to bootstrap? This wipes every injected incident, queue item, and curated category — cannot be undone.")) {
-      return;
-    }
-    setResetting(true);
-    try {
-      await resetDemo();
-      window.location.reload();
-    } catch {
-      setInjectError("Could not reset the demo — is the backend running?");
-      setResetting(false);
-    }
-  }
 
   const openFindings = results.length;
   const criticalCount = results.filter((r) => r.layer2.actionTier === "Tier 0").length;
@@ -258,176 +183,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {injectOpen && (
-        <div className="panel inject-panel">
-          <div className="field-group">
-            <label className="field-label">Source</label>
-            <div className="tier-picker">
-              <button
-                type="button"
-                className={`tier-pick-btn ${mode === "preset" ? "selected" : ""}`}
-                onClick={() => setMode("preset")}
-              >
-                Seed preset
-              </button>
-              <button
-                type="button"
-                className={`tier-pick-btn ${mode === "custom" ? "selected" : ""}`}
-                onClick={() => setMode("custom")}
-              >
-                Custom
-              </button>
-            </div>
-          </div>
-
-          {mode === "preset" ? (
-            <div className="field-group">
-              <label className="field-label">Finding</label>
-              <select className="field-select" value={selectedPreset} onChange={(e) => setSelectedPreset(e.target.value)}>
-                {findingsList.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name} — {f.cve} ({f.severity})
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <>
-              <div className="field-row">
-                <div className="field-group">
-                  <label className="field-label">Component</label>
-                  <input
-                    className="field-input"
-                    value={custom.component}
-                    onChange={(e) => setCustom({ ...custom, component: e.target.value })}
-                    placeholder="e.g. libxml2 (XML parsing)"
-                  />
-                </div>
-                <div className="field-group">
-                  <label className="field-label">Source</label>
-                  <select
-                    className="field-select"
-                    value={custom.source}
-                    onChange={(e) => setCustom({ ...custom, source: e.target.value })}
-                  >
-                    {CUSTOM_SOURCE_OPTIONS.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="field-row">
-                <div className="field-group">
-                  <label className="field-label">CVE (optional)</label>
-                  <input
-                    className="field-input"
-                    value={custom.cve ?? ""}
-                    onChange={(e) => setCustom({ ...custom, cve: e.target.value })}
-                    placeholder="N/A (custom)"
-                  />
-                </div>
-              </div>
-              <div className="field-row">
-                <div className="field-group">
-                  <label className="field-label">Severity</label>
-                  <select
-                    className="field-select"
-                    value={custom.severity}
-                    onChange={(e) => setCustom({ ...custom, severity: e.target.value as CustomIncidentPayload["severity"] })}
-                  >
-                    <option>Critical</option>
-                    <option>High</option>
-                    <option>Medium</option>
-                    <option>Low</option>
-                  </select>
-                </div>
-                <div className="field-group">
-                  <label className="field-label">CVSS base (optional)</label>
-                  <input
-                    className="field-input"
-                    type="number"
-                    min={0}
-                    max={10}
-                    step={0.1}
-                    value={custom.cvssBase ?? ""}
-                    onChange={(e) => setCustom({ ...custom, cvssBase: e.target.value === "" ? undefined : Number(e.target.value) })}
-                    placeholder="Inferred if blank"
-                  />
-                </div>
-                <div className="field-group">
-                  <label className="field-label">EPSS</label>
-                  <input
-                    className="field-input"
-                    type="number"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={custom.epss}
-                    onChange={(e) => setCustom({ ...custom, epss: Number(e.target.value) })}
-                  />
-                </div>
-              </div>
-              <div className="toggle-row">
-                <label className="field-label">CISA KEV listed</label>
-                <button
-                  type="button"
-                  className={`toggle ${custom.cisaKev ? "on" : ""}`}
-                  onClick={() => setCustom({ ...custom, cisaKev: !custom.cisaKev })}
-                >
-                  <span className="toggle-knob" />
-                </button>
-              </div>
-              <div className="toggle-row">
-                <label className="field-label">Runtime reachable</label>
-                <button
-                  type="button"
-                  className={`toggle ${custom.runtimeReachable ? "on" : ""}`}
-                  onClick={() => setCustom({ ...custom, runtimeReachable: !custom.runtimeReachable })}
-                >
-                  <span className="toggle-knob" />
-                </button>
-              </div>
-              <div className="toggle-row">
-                <label className="field-label">Safe-failure scenario</label>
-                <button
-                  type="button"
-                  className={`toggle ${custom.simulateSandboxFailure ? "on" : ""}`}
-                  onClick={() => setCustom({ ...custom, simulateSandboxFailure: !custom.simulateSandboxFailure })}
-                >
-                  <span className="toggle-knob" />
-                </button>
-                <span className="sub">Fail the sandbox contract test and prove deployment is blocked.</span>
-              </div>
-              <div className="field-group">
-                <label className="field-label">Affected services</label>
-                <div className="chip-toggle-row">
-                  {servicesList.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className={`chip-toggle ${custom.affectedServiceIds.includes(s.id) ? "selected" : ""}`}
-                      onClick={() => toggleService(s.id)}
-                    >
-                      {s.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          {injectError && <div className="demo-error">{injectError}</div>}
-          <div className="action-btn-row">
-            <button
-              className="action-btn primary"
-              onClick={handleInject}
-              disabled={injecting || (mode === "preset" ? !selectedPreset : !custom.component || custom.affectedServiceIds.length === 0)}
-            >
-              {injecting ? "Injecting…" : "Inject & Start"}
-            </button>
-          </div>
+      {loadError && (
+        <div className="panel">
+          <div className="demo-error">{loadError}</div>
+          <div className="sub">Is the backend running and reachable at NEXT_PUBLIC_API_BASE?</div>
         </div>
       )}
 

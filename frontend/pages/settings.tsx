@@ -85,8 +85,8 @@ export default function Settings() {
   const [backtesting, setBacktesting] = useState(false);
 
   useEffect(() => {
-    fetchOntologyGraph().then(setOntologyGraph);
-    fetchLearningSummary().then(setLearning);
+    fetchOntologyGraph().then(setOntologyGraph).catch(() => setOntologyGraph(null));
+    fetchLearningSummary().then(setLearning).catch(() => setLearning(null));
   }, []);
 
   useEffect(() => {
