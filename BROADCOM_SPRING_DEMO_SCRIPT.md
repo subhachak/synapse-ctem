@@ -8,7 +8,19 @@ Pair with `BROADCOM_SPRING_DEMO_RUNSHEET.md` for setup, gates, and fallbacks.
 
 ---
 
-## Open (before you touch anything, ~40 sec)
+## Before you share your screen (do not skip)
+
+`[ACTION] Run: ./run.sh reset presentation`
+
+Say nothing during this, it's prep. It cleans the target repo (closes any old
+PR, deletes old fix branches) and confirms the baseline is still vulnerable, so
+the live run produces exactly one fresh pull request and nothing stale is on
+screen. Then have the target repo's Pull Requests tab open and empty, ready for
+the new PR to appear.
+
+---
+
+## Open (before you touch anything else, ~40 sec)
 
 > Quick bit of context before I click anything. Every one of your clients has
 > the same problem right now: hundreds of known vulnerabilities, and no real way
