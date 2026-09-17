@@ -380,16 +380,18 @@ reset_github() {
   local tok; tok="$(env_val GITHUB_TOKEN)"
   local repo; repo="$(env_val CTEM_REMEDIATION_REPO)"
   local log4j_repo; log4j_repo="$(env_val CTEM_LOG4J_REMEDIATION_REPO)"
+  local spring_repo; spring_repo="$(env_val CTEM_SPRING_REMEDIATION_REPO)"
   if [[ -z "$tok" ]]; then
     echo "  (GITHUB_TOKEN not configured in backend/.env; skipping repo cleanup)"
     return 0
   fi
-  if [[ -z "$repo" && -z "$log4j_repo" ]]; then
+  if [[ -z "$repo" && -z "$log4j_repo" && -z "$spring_repo" ]]; then
     echo "  (no remediation target repos configured in backend/.env; skipping repo cleanup)"
     return 0
   fi
   reset_github_repo "$tok" "$repo"
   reset_github_repo "$tok" "$log4j_repo"
+  reset_github_repo "$tok" "$spring_repo"
 }
 
 # Force-push the current node-payments-api snapshot (which carries all three
@@ -451,6 +453,58 @@ ensure_npm_baseline() {
   fi
 }
 
+# Force-push the spring-cloud-fn-app snapshot (vulnerable spring-cloud-function
+# 3.2.2) to a repo's main. Shared by setup-spring and the reset self-heal.
+push_spring_snapshot() {
+  local tok="$1" repo="$2"
+  local tmp; tmp="$(mktemp -d)"
+  cp -R "$TARGET_SNAPSHOT_SPRING/." "$tmp/"
+  (
+    cd "$tmp" && rm -rf target .git
+    git init -b main -q
+    git -c user.email=ctem-agent@mphasis.demo -c user.name="CTEM Implementation Agent" add -A
+    git -c user.email=ctem-agent@mphasis.demo -c user.name="CTEM Implementation Agent" \
+        commit -qm "vulnerable baseline (spring-cloud-function 3.2.2, CVE-2022-22963)"
+    git remote add origin "https://x-access-token:${tok}@github.com/${repo}.git"
+    git push -u origin main --force -q
+  ) || { rm -rf "$tmp"; return 1; }
+  rm -rf "$tmp"
+}
+
+# Return 0 iff the remote repo's main still declares the vulnerable version.
+verify_spring_baseline() {
+  local tok="$1" repo="$2"
+  CTEM_REPO="$repo" GH_TOK="$tok" python3 - <<'SPRINGCHECK'
+import os, sys, base64, json, urllib.request
+repo, tok = os.environ["CTEM_REPO"], os.environ["GH_TOK"]
+try:
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/contents/pom.xml?ref=main",
+        headers={"Authorization": "Bearer " + tok, "Accept": "application/vnd.github+json", "User-Agent": "ctem"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        pom = base64.b64decode(json.load(r)["content"]).decode()
+except Exception:
+    sys.exit(1)
+sys.exit(0 if "<spring-cloud-function.version>3.2.2</spring-cloud-function.version>" in pom else 1)
+SPRINGCHECK
+}
+
+# Make sure the spring baseline repo still carries the vulnerable version;
+# refresh it if a fix ever got merged to main. No-op when unconfigured.
+ensure_spring_baseline() {
+  local tok repo
+  tok="$(env_val GITHUB_TOKEN)"; repo="$(env_val CTEM_SPRING_REMEDIATION_REPO)"
+  if [[ -z "$tok" || -z "$repo" ]]; then
+    return 0
+  fi
+  if verify_spring_baseline "$tok" "$repo"; then
+    echo "  baseline: OK — $repo carries the spring-cloud-function 3.2.2 vuln."
+  else
+    echo "  baseline: $repo missing/stale vuln — refreshing from snapshot..."
+    if push_spring_snapshot "$tok" "$repo"; then echo "    refreshed."; else echo "    ❌ refresh FAILED (check GITHUB_TOKEN)."; fi
+  fi
+}
+
 # Print a clear pre-demo readiness checklist.
 double_check() {
   echo ""
@@ -505,6 +559,7 @@ reset() {
   fi
   reset_github
   ensure_npm_baseline
+  ensure_spring_baseline
   double_check
 }
 
